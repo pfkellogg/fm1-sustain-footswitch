@@ -1,0 +1,248 @@
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.lines import Line2D
+
+LW = 1.4
+FS_PIN = 11
+FS_LABEL = 14
+FS_TITLE = 22
+FS_SUB = 12.5
+FS_SMALL = 10.5
+FS_NOTES = 12.5
+
+
+def line(ax, x1, y1, x2, y2, lw=LW):
+    ax.add_line(Line2D([x1, x2], [y1, y2], color='black', lw=lw, solid_capstyle='round'))
+
+
+def dot(ax, x, y, r=0.06):
+    ax.add_patch(patches.Circle((x, y), r, color='black', zorder=5))
+
+
+def box(ax, x, y, w, h, label, sublabel=None):
+    ax.add_patch(patches.Rectangle((x, y), w, h, fill=False, lw=1.6, edgecolor='black'))
+    ax.text(x + w / 2, y + h + 0.3, label, ha='center', va='bottom', fontsize=FS_LABEL, fontweight='bold')
+    if sublabel:
+        ax.text(x + w / 2, y + h + 0.65, sublabel, ha='center', va='bottom', fontsize=FS_SMALL)
+
+
+def pin_left(ax, box_x, y, stub_len, name):
+    x1 = box_x - stub_len
+    line(ax, x1, y, box_x, y)
+    ax.text((x1 + box_x) / 2, y + 0.18, name, ha='center', va='bottom', fontsize=FS_PIN)
+    return (x1, y)
+
+
+def pin_right(ax, box_x, y, stub_len, name):
+    x2 = box_x + stub_len
+    line(ax, box_x, y, x2, y)
+    ax.text((box_x + x2) / 2, y + 0.18, name, ha='center', va='bottom', fontsize=FS_PIN)
+    return (x2, y)
+
+
+def resistor_h(ax, x1, y, length, label):
+    zz_len = length * 0.55
+    lead = (length - zz_len) / 2
+    x_start_zz = x1 + lead
+    n = 6
+    xs = [x_start_zz + i * (zz_len / n) for i in range(n + 1)]
+    amp = 0.26
+    ys = [y + (amp if i % 2 == 1 else -amp) for i in range(n + 1)]
+    ys[0] = y
+    ys[-1] = y
+    line(ax, x1, y, x_start_zz, y)
+    for i in range(n):
+        line(ax, xs[i], ys[i], xs[i + 1], ys[i + 1])
+    line(ax, x_start_zz + zz_len, y, x1 + length, y)
+    ax.text(x1 + length / 2, y + 0.55, label, ha='center', va='bottom', fontsize=FS_PIN)
+    return (x1 + length, y)
+
+
+def ground_symbol(ax, x, y):
+    line(ax, x, y, x, y - 0.35)
+    widths = [0.5, 0.32, 0.14]
+    for i, w in enumerate(widths):
+        yy = y - 0.35 - i * 0.16
+        line(ax, x - w / 2, yy, x + w / 2, yy)
+
+
+# ===========================================================================
+# FIGURE 1 — Schematic
+# ===========================================================================
+fig1, ax1 = plt.subplots(figsize=(15, 10.5))
+ax1.set_xlim(-1, 22)
+ax1.set_ylim(-3.5, 13.5)
+ax1.set_aspect('equal')
+ax1.axis('off')
+
+ax1.text(0, 13.15, 'FM-1 Sustain Footswitch — Schematic', fontsize=FS_TITLE, fontweight='bold', va='top')
+ax1.text(0, 12.45, 'Arduino Uno R3  +  TRS Pedal In  +  TRS MIDI Out (Type A)', fontsize=FS_SUB, va='top', style='italic')
+
+GND_Y = 1.0
+line(ax1, 0.5, GND_Y, 21.0, GND_Y, lw=1.8)
+ground_symbol(ax1, 0.9, GND_Y)
+
+# --- Pedal input jack (TRS) ---
+PJ_X, PJ_Y, PJ_W, PJ_H = 1.0, 6.5, 2.8, 4.0
+box(ax1, PJ_X, PJ_Y, PJ_W, PJ_H, 'Pedal IN', '3.5mm TRS jack')
+pj_t = pin_right(ax1, PJ_X + PJ_W, 9.7, 0.9, 'Tip')
+pj_r = pin_right(ax1, PJ_X + PJ_W, 8.4, 0.9, 'Ring')
+pj_s = pin_right(ax1, PJ_X + PJ_W, 7.1, 0.9, 'Sleeve')
+
+# Ring + Sleeve tied together, dropped to GND bus
+line(ax1, pj_r[0], pj_r[1], pj_r[0], pj_s[1])
+dot(ax1, pj_r[0], pj_r[1])
+dot(ax1, pj_r[0], pj_s[1])
+line(ax1, pj_r[0], pj_s[1], pj_r[0], GND_Y)
+
+# --- Arduino Uno R3 ---
+AU_X, AU_Y, AU_W, AU_H = 6.5, 3.0, 4.5, 8.0
+box(ax1, AU_X, AU_Y, AU_W, AU_H, 'Arduino Uno R3')
+au_d2 = pin_left(ax1, AU_X, 9.7, 1.1, 'D2')
+au_gnd_l = pin_left(ax1, AU_X, 5.5, 1.1, 'GND')
+au_tx = pin_right(ax1, AU_X + AU_W, 9.7, 1.1, 'TX (D1)')
+au_5v = pin_right(ax1, AU_X + AU_W, 8.0, 1.1, '5V')
+au_gnd_r = pin_right(ax1, AU_X + AU_W, 6.3, 1.1, 'GND')
+ax1.text(AU_X + AU_W / 2, AU_Y - 0.35, 'INPUT_PULLUP on D2', ha='center', fontsize=FS_SMALL, style='italic', color='dimgray')
+
+# Pedal Tip -> Arduino D2 (straight wire, same y)
+line(ax1, pj_t[0], pj_t[1], au_d2[0], au_d2[1])
+
+# Arduino left GND -> GND bus
+line(ax1, au_gnd_l[0], au_gnd_l[1], au_gnd_l[0], GND_Y)
+dot(ax1, au_gnd_l[0], GND_Y)
+
+# --- MIDI OUT jack (TRS, Type A) ---
+MJ_X, MJ_Y, MJ_W, MJ_H = 17.0, 5.5, 2.8, 5.0
+box(ax1, MJ_X, MJ_Y, MJ_W, MJ_H, 'MIDI OUT', '3.5mm TRS jack (Type A)')
+mj_t = pin_left(ax1, MJ_X, 9.7, 0.9, 'Tip')
+mj_r = pin_left(ax1, MJ_X, 8.0, 0.9, 'Ring')
+mj_s = pin_left(ax1, MJ_X, 6.3, 0.9, 'Sleeve')
+
+# Arduino TX -> R1 (220ohm) -> MIDI jack Tip (signal)
+r1_end = resistor_h(ax1, au_tx[0], au_tx[1], mj_t[0] - au_tx[0], 'R1\n220Ω')
+line(ax1, r1_end[0], r1_end[1], mj_t[0], mj_t[1])
+
+# Arduino 5V -> R2 (220ohm) -> MIDI jack Ring (current source)
+r2_end = resistor_h(ax1, au_5v[0], au_5v[1], mj_r[0] - au_5v[0], 'R2\n220Ω')
+line(ax1, r2_end[0], r2_end[1], mj_r[0], mj_r[1])
+
+# Arduino GND -> MIDI jack Sleeve (direct wire, no resistor)
+line(ax1, au_gnd_r[0], au_gnd_r[1], mj_s[0], mj_s[1])
+dot(ax1, au_gnd_r[0], au_gnd_r[1])
+line(ax1, au_gnd_r[0], au_gnd_r[1], au_gnd_r[0], GND_Y)
+
+notes1 = (
+    "Notes:\n"
+    "• Pedal ring + sleeve are tied together so a plain mono (TS) pedal plug still grounds correctly in the TRS jack\n"
+    "• D2 uses INPUT_PULLUP -- the pedal only needs to short tip to ring/sleeve when pressed (normally-open momentary)\n"
+    "• Type A TRS MIDI: tip = signal, ring = +5V current source, sleeve = ground\n"
+    "• R1 limits current through the FM-1's opto-isolated MIDI input; R2 sources the +5V loop current -- both 220Ω, matching the standard DIN MIDI-out circuit\n"
+    "• TX (D1) is shared with the USB-serial programmer -- disconnect the MIDI OUT jack (or at least the R1 lead) before uploading a new sketch\n"
+    "• If the FM-1 doesn't respond, it may expect Type B instead: swap Tip and Ring at the MIDI OUT jack (tip = GND, ring = signal, sleeve = GND)"
+)
+line(ax1, 0.5, GND_Y - 0.8, 21.0, GND_Y - 0.8, lw=0.8)
+ax1.lines[-1].set_linestyle('dashed')
+ax1.lines[-1].set_color('gray')
+ax1.text(0, GND_Y - 1.2, notes1, fontsize=FS_NOTES, va='top', ha='left', family='sans-serif', linespacing=1.6)
+
+plt.tight_layout()
+
+# ===========================================================================
+# FIGURE 2 — Physical layout / assembly diagram
+# ===========================================================================
+fig2, ax2 = plt.subplots(figsize=(13, 9))
+ax2.set_xlim(-1, 16)
+ax2.set_ylim(-1, 12)
+ax2.set_aspect('equal')
+ax2.axis('off')
+
+ax2.text(0, 11.6, 'FM-1 Sustain Footswitch — Layout / Assembly Diagram', fontsize=FS_TITLE - 3, fontweight='bold', va='top')
+ax2.text(0, 11.0, 'Top-down view of enclosure: pedal jack (left panel), Arduino Uno (center), MIDI out jack (right panel)', fontsize=FS_SUB - 1, va='top', style='italic')
+
+# Enclosure outline
+ENC_X, ENC_Y, ENC_W, ENC_H = 0.5, 1.0, 14.5, 8.5
+ax2.add_patch(patches.FancyBboxPatch((ENC_X, ENC_Y), ENC_W, ENC_H,
+                                      boxstyle="round,pad=0,rounding_size=0.25",
+                                      fill=False, lw=2.0, edgecolor='black'))
+ax2.text(ENC_X + ENC_W / 2, ENC_Y + ENC_H + 0.3, 'project box (top cover removed)', ha='center', fontsize=FS_SMALL, style='italic', color='dimgray')
+
+# Arduino Uno footprint (roughly to scale: ~2.7" x 2.1")
+UNO_X, UNO_Y, UNO_W, UNO_H = 5.5, 3.2, 5.0, 4.0
+ax2.add_patch(patches.Rectangle((UNO_X, UNO_Y), UNO_W, UNO_H, fill=True, facecolor='#eef2ff', edgecolor='black', lw=1.6))
+ax2.text(UNO_X + UNO_W / 2, UNO_Y + UNO_H + 0.25, 'Arduino Uno R3', ha='center', fontsize=FS_LABEL, fontweight='bold')
+ax2.add_patch(patches.Rectangle((UNO_X + 0.3, UNO_Y + UNO_H - 0.9), 1.6, 0.6, fill=True, facecolor='#c7d2fe', edgecolor='black', lw=1.0))
+ax2.text(UNO_X + 0.3 + 0.8, UNO_Y + UNO_H - 0.6, 'USB', ha='center', va='center', fontsize=FS_SMALL)
+
+# Named pin points on the Uno footprint edge
+uno_d2 = (UNO_X, UNO_Y + 3.1)
+uno_gnd_l = (UNO_X, UNO_Y + 2.3)
+uno_tx = (UNO_X + UNO_W, UNO_Y + 3.1)
+uno_5v = (UNO_X + UNO_W, UNO_Y + 2.3)
+uno_gnd_r = (UNO_X + UNO_W, UNO_Y + 1.5)
+for (px, py), name, ha, dx in [
+    (uno_d2, 'D2', 'right', -0.15),
+    (uno_gnd_l, 'GND', 'right', -0.15),
+    (uno_tx, 'TX', 'left', 0.15),
+    (uno_5v, '5V', 'left', 0.15),
+    (uno_gnd_r, 'GND', 'left', 0.15),
+]:
+    dot(ax2, px, py, r=0.07)
+    ax2.text(px + dx, py, name, ha=ha, va='center', fontsize=FS_PIN)
+
+# Pedal jack on left panel
+PJACK = (ENC_X + 1.3, UNO_Y + 2.7)
+ax2.add_patch(patches.Circle(PJACK, 0.35, fill=True, facecolor='#fef3c7', edgecolor='black', lw=1.6))
+ax2.text(PJACK[0], PJACK[1] + 0.65, 'Pedal IN', ha='center', fontsize=FS_LABEL, fontweight='bold')
+ax2.text(PJACK[0], PJACK[1] + 0.30, '3.5mm TRS', ha='center', fontsize=FS_SMALL)
+ax2.text(PJACK[0], ENC_Y + 0.25, '(mounted on left panel,\nto external pedal)', ha='center', fontsize=FS_SMALL, style='italic', color='dimgray')
+
+# MIDI out jack on right panel
+MJACK = (ENC_X + ENC_W - 1.6, UNO_Y + 2.7)
+ax2.add_patch(patches.Circle(MJACK, 0.35, fill=True, facecolor='#fecaca', edgecolor='black', lw=1.6))
+ax2.text(MJACK[0], MJACK[1] + 0.75, 'MIDI OUT', ha='center', fontsize=FS_LABEL, fontweight='bold')
+ax2.text(MJACK[0], MJACK[1] + 0.40, '3.5mm TRS (Type A)', ha='center', fontsize=FS_SMALL)
+ax2.text(MJACK[0], ENC_Y + 0.25, '(mounted on right panel,\ncable to FM-1 MIDI IN)', ha='center', fontsize=FS_SMALL, style='italic', color='dimgray')
+
+# Small perfboard patch for the two resistors, sitting between Uno and MIDI jack
+PERF_X, PERF_Y, PERF_W, PERF_H = MJACK[0] - 2.1, UNO_Y + 1.7, 1.5, 1.4
+ax2.add_patch(patches.Rectangle((PERF_X, PERF_Y), PERF_W, PERF_H, fill=True, facecolor='#f3f4f6', edgecolor='black', lw=1.2, linestyle='dashed'))
+ax2.text(PERF_X + PERF_W / 2, PERF_Y + PERF_H / 2, 'R1, R2\n(220Ω)', ha='center', va='center', fontsize=FS_SMALL)
+
+# Wires: pedal jack -> Uno D2 / GND
+line(ax2, PJACK[0] + 0.35, PJACK[1] + 0.15, uno_d2[0], uno_d2[1])
+line(ax2, PJACK[0] + 0.35, PJACK[1] - 0.15, uno_gnd_l[0], uno_gnd_l[1])
+ax2.text((PJACK[0] + uno_d2[0]) / 2, (PJACK[1] + 0.15 + uno_d2[1]) / 2 + 0.15, 'tip', ha='center', fontsize=FS_SMALL, color='dimgray')
+ax2.text((PJACK[0] + uno_gnd_l[0]) / 2, (PJACK[1] - 0.15 + uno_gnd_l[1]) / 2 - 0.25, 'ring+sleeve', ha='center', fontsize=FS_SMALL, color='dimgray')
+
+# Wires: Uno -> perfboard -> MIDI jack
+line(ax2, uno_tx[0], uno_tx[1], PERF_X, PERF_Y + PERF_H - 0.3)
+line(ax2, uno_5v[0], uno_5v[1], PERF_X, PERF_Y + PERF_H - 0.9)
+line(ax2, uno_gnd_r[0], uno_gnd_r[1], MJACK[0] - 0.35, MJACK[1] - 0.15)
+line(ax2, PERF_X + PERF_W, PERF_Y + PERF_H - 0.3, MJACK[0] - 0.35, MJACK[1] + 0.15)
+line(ax2, PERF_X + PERF_W, PERF_Y + PERF_H - 0.9, MJACK[0] - 0.35, MJACK[1])
+
+notes2 = (
+    "Notes:\n"
+    "• Resistors R1/R2 can live on a small offcut of perfboard, or be soldered directly in-line on the wire runs -- exact placement isn't critical\n"
+    "• See the schematic for the electrical connections (which wire goes through which resistor) -- this diagram is for physical placement only\n"
+    "• Leave slack on the USB cable path -- the board still needs to be reachable for re-flashing (disconnect MIDI OUT jack's TX lead first)"
+)
+ax2.text(0, ENC_Y - 0.5, notes2, fontsize=FS_NOTES - 1, va='top', ha='left', family='sans-serif', linespacing=1.6)
+
+plt.tight_layout()
+
+# ===========================================================================
+# Save
+# ===========================================================================
+import os
+OUT_DIR = os.path.dirname(os.path.abspath(__file__))
+fig1.savefig(os.path.join(OUT_DIR, 'fm1_footswitch_schematic.pdf'))
+fig1.savefig(os.path.join(OUT_DIR, 'fm1_footswitch_schematic.png'), dpi=160)
+fig1.savefig(os.path.join(OUT_DIR, 'fm1_footswitch_schematic.svg'))
+fig2.savefig(os.path.join(OUT_DIR, 'fm1_footswitch_layout.pdf'))
+fig2.savefig(os.path.join(OUT_DIR, 'fm1_footswitch_layout.png'), dpi=160)
+fig2.savefig(os.path.join(OUT_DIR, 'fm1_footswitch_layout.svg'))
+print('saved schematic + layout to', OUT_DIR)
