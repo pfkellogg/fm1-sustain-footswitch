@@ -78,7 +78,7 @@ ax1.set_aspect('equal')
 ax1.axis('off')
 
 ax1.text(0, 13.15, 'FM-1 Sustain Footswitch — Schematic', fontsize=FS_TITLE, fontweight='bold', va='top')
-ax1.text(0, 12.45, 'Arduino Uno R3  +  TRS Pedal In  +  TRS MIDI Out (Type A)', fontsize=FS_SUB, va='top', style='italic')
+ax1.text(0, 12.45, 'Arduino Uno R3  +  TRS Pedal In  +  Built-in Button  +  TRS MIDI Out (Type A)', fontsize=FS_SUB, va='top', style='italic')
 
 GND_Y = 1.0
 line(ax1, 0.5, GND_Y, 21.0, GND_Y, lw=1.8)
@@ -109,10 +109,26 @@ ax1.text(AU_X + AU_W / 2, AU_Y - 0.35, 'INPUT_PULLUP on D2', ha='center', fontsi
 
 # Pedal Tip -> Arduino D2 (straight wire, same y)
 line(ax1, pj_t[0], pj_t[1], au_d2[0], au_d2[1])
+dot(ax1, au_d2[0], au_d2[1])
 
 # Arduino left GND -> GND bus
 line(ax1, au_gnd_l[0], au_gnd_l[1], au_gnd_l[0], GND_Y)
 dot(ax1, au_gnd_l[0], GND_Y)
+
+# --- Built-in panel pushbutton (wired in parallel with the pedal jack) ---
+BTN_X, BTN_Y, BTN_R = 3.6, 3.2, 0.32
+ax1.add_patch(patches.Circle((BTN_X, BTN_Y), BTN_R, fill=False, lw=1.6))
+ax1.text(BTN_X - BTN_R - 0.25, BTN_Y + 0.15, 'Built-in Button', ha='right', va='bottom', fontsize=FS_LABEL, fontweight='bold')
+ax1.text(BTN_X - BTN_R - 0.25, BTN_Y - 0.05, '(panel momentary, normally-open)', ha='right', va='top', fontsize=FS_SMALL, style='italic', color='dimgray')
+
+# One button leg up to the D2 line, the other down to GND bus -- same
+# nodes the pedal jack lands on, so button and pedal are electrically
+# in parallel (either one alone can pull D2 low).
+line(ax1, BTN_X, BTN_Y + 0.32, BTN_X, au_d2[1])
+line(ax1, BTN_X, au_d2[1], au_d2[0], au_d2[1])
+dot(ax1, BTN_X, au_d2[1])
+line(ax1, BTN_X, BTN_Y - 0.32, BTN_X, GND_Y)
+dot(ax1, BTN_X, GND_Y)
 
 # --- MIDI OUT jack (TRS, Type A) ---
 MJ_X, MJ_Y, MJ_W, MJ_H = 17.0, 5.5, 2.8, 5.0
@@ -136,8 +152,9 @@ line(ax1, au_gnd_r[0], au_gnd_r[1], au_gnd_r[0], GND_Y)
 
 notes1 = (
     "Notes:\n"
+    "• Built-in Button is wired in parallel with the pedal jack (same D2/GND nodes) -- either one alone can trigger sustain, so an external pedal is optional\n"
     "• Pedal ring + sleeve are tied together so a plain mono (TS) pedal plug still grounds correctly in the TRS jack\n"
-    "• D2 uses INPUT_PULLUP -- the pedal only needs to short tip to ring/sleeve when pressed (normally-open momentary)\n"
+    "• D2 uses INPUT_PULLUP -- the button or pedal only needs to short D2 to GND when pressed (normally-open momentary)\n"
     "• Type A TRS MIDI: tip = signal, ring = +5V current source, sleeve = ground\n"
     "• R1 limits current through the FM-1's opto-isolated MIDI input; R2 sources the +5V loop current -- both 220Ω, matching the standard DIN MIDI-out circuit\n"
     "• TX (D1) is shared with the USB-serial programmer -- disconnect the MIDI OUT jack (or at least the R1 lead) before uploading a new sketch\n"
@@ -160,7 +177,7 @@ ax2.set_aspect('equal')
 ax2.axis('off')
 
 ax2.text(0, 11.6, 'FM-1 Sustain Footswitch — Layout / Assembly Diagram', fontsize=FS_TITLE - 3, fontweight='bold', va='top')
-ax2.text(0, 11.0, 'Top-down view of enclosure: pedal jack (left panel), Arduino Uno (center), MIDI out jack (right panel)', fontsize=FS_SUB - 1, va='top', style='italic')
+ax2.text(0, 11.0, 'Top-down view of enclosure: pedal jack + built-in button (left panel), Arduino Uno (center), MIDI out jack (right panel)', fontsize=FS_SUB - 1, va='top', style='italic')
 
 # Enclosure outline
 ENC_X, ENC_Y, ENC_W, ENC_H = 0.5, 1.0, 14.5, 8.5
@@ -193,11 +210,19 @@ for (px, py), name, ha, dx in [
     ax2.text(px + dx, py, name, ha=ha, va='center', fontsize=FS_PIN)
 
 # Pedal jack on left panel
-PJACK = (ENC_X + 1.3, UNO_Y + 2.7)
+PJACK = (ENC_X + 1.3, UNO_Y + 3.1)
 ax2.add_patch(patches.Circle(PJACK, 0.35, fill=True, facecolor='#fef3c7', edgecolor='black', lw=1.6))
 ax2.text(PJACK[0], PJACK[1] + 0.65, 'Pedal IN', ha='center', fontsize=FS_LABEL, fontweight='bold')
 ax2.text(PJACK[0], PJACK[1] + 0.30, '3.5mm TRS', ha='center', fontsize=FS_SMALL)
 ax2.text(PJACK[0], ENC_Y + 0.25, '(mounted on left panel,\nto external pedal)', ha='center', fontsize=FS_SMALL, style='italic', color='dimgray')
+
+# Built-in panel pushbutton, also on the left panel, wired in parallel
+# with the pedal jack (same D2/GND nodes -- either one triggers sustain)
+BTN_R = 0.35
+BUTTON = (ENC_X + 1.3, UNO_Y + 0.9)
+ax2.add_patch(patches.Circle(BUTTON, BTN_R, fill=True, facecolor='#d1fae5', edgecolor='black', lw=1.6))
+ax2.text(BUTTON[0], BUTTON[1] + BTN_R + 0.25, 'Button', ha='center', va='bottom', fontsize=FS_LABEL, fontweight='bold')
+ax2.text(BUTTON[0], BUTTON[1] - BTN_R - 0.3, '(panel momentary,\nin parallel with Pedal IN)', ha='center', va='top', fontsize=FS_SMALL, style='italic', color='dimgray')
 
 # MIDI out jack on right panel
 MJACK = (ENC_X + ENC_W - 1.6, UNO_Y + 2.7)
@@ -217,6 +242,12 @@ line(ax2, PJACK[0] + 0.35, PJACK[1] - 0.15, uno_gnd_l[0], uno_gnd_l[1])
 ax2.text((PJACK[0] + uno_d2[0]) / 2, (PJACK[1] + 0.15 + uno_d2[1]) / 2 + 0.15, 'tip', ha='center', fontsize=FS_SMALL, color='dimgray')
 ax2.text((PJACK[0] + uno_gnd_l[0]) / 2, (PJACK[1] - 0.15 + uno_gnd_l[1]) / 2 - 0.25, 'ring+sleeve', ha='center', fontsize=FS_SMALL, color='dimgray')
 
+# Wires: built-in button -> same Uno D2 / GND nodes (parallel with pedal jack)
+line(ax2, BUTTON[0] + 0.35, BUTTON[1] + 0.15, uno_d2[0], uno_d2[1])
+line(ax2, BUTTON[0] + 0.35, BUTTON[1] - 0.15, uno_gnd_l[0], uno_gnd_l[1])
+dot(ax2, uno_d2[0], uno_d2[1], r=0.06)
+dot(ax2, uno_gnd_l[0], uno_gnd_l[1], r=0.06)
+
 # Wires: Uno -> perfboard -> MIDI jack
 line(ax2, uno_tx[0], uno_tx[1], PERF_X, PERF_Y + PERF_H - 0.3)
 line(ax2, uno_5v[0], uno_5v[1], PERF_X, PERF_Y + PERF_H - 0.9)
@@ -228,6 +259,7 @@ notes2 = (
     "Notes:\n"
     "• Resistors R1/R2 can live on a small offcut of perfboard, or be soldered directly in-line on the wire runs -- exact placement isn't critical\n"
     "• See the schematic for the electrical connections (which wire goes through which resistor) -- this diagram is for physical placement only\n"
+    "• Button and Pedal IN jack are wired in parallel to the same D2/GND nodes -- either one alone triggers sustain, so the pedal can be left unplugged\n"
     "• Leave slack on the USB cable path -- the board still needs to be reachable for re-flashing (disconnect MIDI OUT jack's TX lead first)"
 )
 ax2.text(0, ENC_Y - 0.5, notes2, fontsize=FS_NOTES - 1, va='top', ha='left', family='sans-serif', linespacing=1.6)

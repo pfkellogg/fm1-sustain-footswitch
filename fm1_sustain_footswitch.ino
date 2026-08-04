@@ -1,6 +1,7 @@
-// Reads a 1/8" (3.5mm) TRS sustain pedal jack and sends MIDI CC64 (sustain)
-// out the Arduino's hardware Serial MIDI circuit, straight to a second
-// 3.5mm TRS jack wired Type A, into the FM-1's MIDI IN.
+// Reads a 1/8" (3.5mm) TRS sustain pedal jack (or a built-in panel button,
+// wired in parallel) and sends MIDI CC64 (sustain) out the Arduino's
+// hardware Serial MIDI circuit, straight to a second 3.5mm TRS jack wired
+// Type A, into the FM-1's MIDI IN.
 //
 // Wiring:
 //   Pedal jack tip           -> D2
@@ -8,6 +9,11 @@
 //   (D2 uses INPUT_PULLUP, so the pedal just needs to short tip to
 //    ring/sleeve when pressed -- true for the vast majority of momentary
 //    sustain pedals, even when plugged into a TRS jack via a mono TS plug)
+//
+//   Built-in button leg 1 -> D2  (same node as pedal jack tip)
+//   Built-in button leg 2 -> GND (same node as pedal jack ring/sleeve)
+//   (in parallel with the pedal jack, so the button works with no pedal
+//    plugged in -- no separate pin or code path needed)
 //
 //   TX (pin 1) -> 220ohm resistor -> MIDI-out TRS jack tip
 //   5V         -> 220ohm resistor -> MIDI-out TRS jack ring

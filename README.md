@@ -1,6 +1,6 @@
 # fm1-sustain-footswitch
 
-A small Arduino-based board that converts a 1/8" (3.5mm) sustain pedal into MIDI CC64 (sustain) for the [M-VAVE FM-1](https://www.m-vave.com/products), via its 3.5mm TRS MIDI IN.
+A small Arduino-based board that converts a 1/8" (3.5mm) sustain pedal into MIDI CC64 (sustain) for the [M-VAVE FM-1](https://www.m-vave.com/products), via its 3.5mm TRS MIDI IN. Includes a built-in panel pushbutton wired in parallel with the pedal jack, so sustain still works with no external pedal plugged in.
 
 Confirmed working end-to-end: physical pedal → Arduino → TRS MIDI (Type A) → FM-1 sustain.
 
@@ -21,6 +21,7 @@ MIDI is a serial protocol, so a plain switch-to-jack cable can't talk to the FM-
 - Arduino Uno R3
 - 1/8" (3.5mm) TRS panel-mount jack, wired to the sustain pedal
 - 1/8" (3.5mm) TRS panel-mount jack, for MIDI out
+- Momentary panel pushbutton (normally-open SPST), for sustain with no pedal plugged in
 - 2x 220ohm resistors
 - 3.5mm TRS-to-TRS cable, to reach the FM-1's MIDI IN
 
@@ -32,6 +33,13 @@ pedal jack tip           -> Arduino D2
 pedal jack ring + sleeve -> Arduino GND (tied together)
 ```
 D2 is `INPUT_PULLUP`, so the pedal just needs to short tip to ring/sleeve when pressed. Ring and sleeve are tied together so a plain mono (TS) pedal plug still grounds correctly when inserted into the TRS jack. This covers the vast majority of 1/8" sustain pedals (simple momentary SPST, normally open).
+
+**Built-in button (optional, for no pedal):**
+```
+button leg 1 -> Arduino D2   (same node as pedal jack tip)
+button leg 2 -> Arduino GND  (same node as pedal jack ring/sleeve)
+```
+Wired straight in parallel with the pedal jack — no separate pin, no code changes. Either the button or the pedal alone can pull D2 low, so pressing the button works whether or not a pedal is plugged in. If a pedal *is* plugged in and its footswitch is a normally-closed momentary (rare), it'll hold D2 low all the time, which would also hold the panel button's effect at "always on" — not an issue for the standard normally-open pedals this is designed for.
 
 **MIDI output (direct to TRS, Type A):**
 ```
