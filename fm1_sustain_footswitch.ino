@@ -20,8 +20,16 @@
 //   GND        -> MIDI-out TRS jack sleeve
 //   MIDI-out TRS jack (Type A) -> cable -> FM-1 MIDI IN
 //
+//   OLED (I2C SSD1306 128x64): GND->GND, VCC->5V, SCL->A5, SDA->A4
+//   (shows SUSTAIN ON / SUSTAIN OFF, matching this board's own state --
+//    it has no incoming MIDI to show note data, only the pedal/button)
+//
 // NOTE: pins 0/1 are shared with USB serial. Unplug the TRS output jack's
 // TX line while uploading, or the upload will fail.
+
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 constexpr uint8_t kPedalPin = 2;
 constexpr uint8_t kChannel  = 0;      // 0 = MIDI channel 1; match FM-1's Note Channel
@@ -32,6 +40,13 @@ constexpr uint16_t kDebounceMs = 15;
 // i.e. sustain reads as "on" at rest and "off" when pressed.
 constexpr bool kInvert = false;
 
+constexpr uint8_t kScreenWidth  = 128;
+constexpr uint8_t kScreenHeight = 64;
+constexpr int8_t  kOledReset    = -1;
+constexpr uint8_t kOledAddress  = 0x3C;
+
+Adafruit_SSD1306 g_display(kScreenWidth, kScreenHeight, &Wire, kOledReset);
+
 bool lastReading = HIGH;
 bool pedalDown = false;
 unsigned long lastChangeMs = 0;
@@ -41,9 +56,24 @@ void sendCC(uint8_t cc, uint8_t value) {
   Serial.write(msg, 3);
 }
 
+void showSustainState(bool down) {
+  g_display.clearDisplay();
+  g_display.setTextSize(2);
+  g_display.setCursor(0, 24);
+  g_display.print(F("SUSTAIN"));
+  g_display.setCursor(0, 44);
+  g_display.print(down ? F("ON") : F("OFF"));
+  g_display.display();
+}
+
 void setup() {
   pinMode(kPedalPin, INPUT_PULLUP);
   Serial.begin(31250);
+
+  Wire.begin();
+  g_display.begin(SSD1306_SWITCHCAPVCC, kOledAddress);
+  g_display.setTextColor(SSD1306_WHITE);
+  showSustainState(pedalDown);
 }
 
 void loop() {
@@ -59,6 +89,7 @@ void loop() {
     if (down != pedalDown) {
       pedalDown = down;
       sendCC(kCC, pedalDown ? 127 : 0);
+      showSustainState(pedalDown);
     }
   }
 }

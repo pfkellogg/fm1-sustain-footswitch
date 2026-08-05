@@ -24,6 +24,7 @@ MIDI is a serial protocol, so a plain switch-to-jack cable can't talk to the FM-
 - Momentary panel pushbutton (normally-open SPST), for sustain with no pedal plugged in
 - 2x 220ohm resistors
 - 3.5mm TRS-to-TRS cable, to reach the FM-1's MIDI IN
+- 0.96" I2C SSD1306 OLED (128x64), optional, shows live sustain status
 
 ## Wiring
 
@@ -48,6 +49,15 @@ Arduino 5V         -> 220ohm resistor -> TRS jack ring
 Arduino GND        -> TRS jack sleeve
 ```
 Then a plain 3.5mm TRS-to-TRS cable into the FM-1's MIDI IN.
+
+**OLED status display (optional, I2C SSD1306 128x64):**
+```
+OLED GND -> Arduino GND
+OLED VCC -> Arduino 5V
+OLED SCL -> Arduino A5
+OLED SDA -> Arduino A4
+```
+Shows `SUSTAIN ON` / `SUSTAIN OFF`, updated whenever the debounced pedal/button state changes. This board never receives MIDI input, so it only ever reflects its own pedal/button state — not note data. Requires the `Adafruit SSD1306`, `Adafruit GFX Library`, and `Adafruit BusIO` libraries.
 
 ## Flashing
 
