@@ -1,8 +1,8 @@
 # fm1-sustain-footswitch
 
-A small Arduino-based board that converts a 1/8" (3.5mm) sustain pedal into MIDI CC64 (sustain) for the [M-VAVE FM-1](https://www.m-vave.com/products), via its 3.5mm TRS MIDI IN. Includes a built-in panel pushbutton wired in parallel with the pedal jack, so sustain still works with no external pedal plugged in. A panel switch flips the OLED between Sustain status and a Pitch mode that reads the FM-1's own headphone output and displays the note, octave, frequency, and tuning offset being played.
+A small Arduino-based board that converts a 1/8" (3.5mm) sustain pedal into MIDI CC64 (sustain) for the [M-VAVE FM-1](https://www.m-vave.com/products), via its 3.5mm TRS MIDI IN. Includes a built-in panel pushbutton wired in parallel with the pedal jack, so sustain still works with no external pedal plugged in. Also drives a linear softpot pitch strip for continuous pitch-bend control — **ON HOLD as of 2026-08-09, pending sourcing the strip itself** (see Parts below).
 
-Confirmed working end-to-end: physical pedal → Arduino → TRS MIDI (Type A) → FM-1 sustain.
+Confirmed working end-to-end: physical pedal → Arduino → TRS MIDI (Type A) → FM-1 sustain. The pitch-strip code is written and compiles clean, but is untested on real hardware since the part hasn't been bought yet.
 
 ## Schematic and layout
 
@@ -22,12 +22,10 @@ MIDI is a serial protocol, so a plain switch-to-jack cable can't talk to the FM-
 - 1/8" (3.5mm) TRS panel-mount jack, wired to the sustain pedal
 - 1/8" (3.5mm) TRS panel-mount jack, for MIDI out
 - Momentary panel pushbutton (normally-open SPST), for sustain with no pedal plugged in
-- 2x 220ohm resistors
+- 2x 220ohm resistors (MIDI out circuit)
 - 3.5mm TRS-to-TRS cable, to reach the FM-1's MIDI IN
-- 0.96" I2C SSD1306 OLED (128x64), optional, shows live sustain status or pitch reading
-- SPDT ON-ON toggle switch, to select Sustain vs Pitch display mode
-- 1/8" (3.5mm) jack, wired to the FM-1's headphone output (Pitch mode only)
-- 100kohm resistor, 1uF capacitor, 2x 10kohm resistors (Pitch mode audio bias circuit)
+- **Linear softpot pitch strip, 100mm — NOT YET SOURCED.** The originally-planned SparkFun SKU (SEN-08607) is discontinued. Buy the same physical part from [Adafruit #178](https://www.adafruit.com/product/178) instead (also available via Mouser, Newark, Jameco). It was never available on Amazon, despite some listings suggesting otherwise.
+- 10kohm resistor, for the pitch strip's pull-down
 
 ## Wiring
 
@@ -53,40 +51,13 @@ Arduino GND        -> TRS jack sleeve
 ```
 Then a plain 3.5mm TRS-to-TRS cable into the FM-1's MIDI IN.
 
-**OLED status display (optional, I2C SSD1306 128x64):**
+**Pitch strip (linear softpot, 100mm — ON HOLD, part not yet sourced):**
 ```
-OLED GND -> Arduino GND
-OLED VCC -> Arduino 5V
-OLED SCL -> Arduino A5
-OLED SDA -> Arduino A4
+Strip End 1 -> Arduino 5V
+Strip End 2 -> Arduino GND
+Strip Wiper -> Arduino A1, with a 10kohm pull-down resistor (A1 -> GND)
 ```
-Requires the `Adafruit SSD1306`, `Adafruit GFX Library`, and `Adafruit BusIO` libraries.
-
-**Mode switch (optional, SPDT ON-ON):**
-```
-switch common -> Arduino GND
-switch throw 1 -> Arduino D3
-switch throw 2 -> not connected
-```
-D3 is `INPUT_PULLUP`. Grounded (throw 1 selected) = **Pitch mode**. Floating/default (throw 2, or no switch installed) = **Sustain mode**, so the board works exactly as before if you skip this switch entirely. The pedal/button still sends CC64 sustain in either mode — the switch only changes what the OLED shows.
-
-- **Sustain mode:** `SUSTAIN ON` / `SUSTAIN OFF`, updated whenever the debounced pedal/button state changes. This board has no MIDI input, so this is the only thing it can show without a switch.
-- **Pitch mode:** note name + octave (large), frequency to 1 decimal, and tuning offset in cents — all read from the FM-1's own audio output (see below), not from MIDI. Shows `NO SIGNAL` when the signal is near-silent or the autocorrelation can't find a confident pitch. Refreshes roughly every 80-100ms; while in Pitch mode, sustain-pedal response lags by up to that much since capturing and analyzing audio blocks the loop — switch back to Sustain mode for the tightest pedal feel.
-
-**Pitch mode audio input (optional, from FM-1 headphone out):**
-
-The Arduino's ADC only reads 0-5V, but headphone output is an AC signal centered on 0V, so it needs a small bias/coupling circuit before it can be read on an analog pin:
-```
-FM-1 headphone out (tip, either channel) -> 100kohm resistor -> node X
-node X -> 1uF capacitor -> Arduino A0
-Arduino 5V  -> 10kohm resistor -> node Y
-Arduino GND -> 10kohm resistor -> node Y
-node Y -> Arduino A0                          (same node the cap feeds)
-FM-1 headphone out sleeve (ground) -> Arduino GND
-```
-The two 10kohm resistors form a divider that biases A0 to ~2.5V at rest; the audio signal rides on top of that through the coupling cap, keeping the whole thing inside the ADC's 0-5V range. The 100kohm resistor limits current and knocks down the signal a bit as cheap insurance against clipping at high FM-1 volume.
-
-Pitch detection is autocorrelation-based (240-sample buffer at 6kHz, with parabolic interpolation for sub-Hz precision), tuned for a range of roughly 50Hz-1000Hz (about G1-B5) — a practical limit for a single ATmega328p doing real-time analysis, not the FM-1's full range. **Untested with a real FM-1 signal as of this writing** — the noise-floor (`kMinAmplitude`) and confidence (`kMinConfidence`) thresholds in the sketch are starting points and will likely need tuning once there's a real signal to test against.
+The pull-down keeps A1 at a stable near-0 reading when the strip isn't touched (softpots float with no finger contact, unlike a knob-style pot), which the sketch reads as "centered, no bend." A base note (middle C) sounds continuously from power-on — no button needed. Sliding the strip bends pitch; releasing lets it settle back to center. Confirmed 2026-08-06 that the FM-1's physical MIDI IN (unlike its USB MIDI) applies continuous pitch bend to an already-sounding note, same as a real controller's wheel/strip — so this should work once the part is in hand, but hasn't been bench-tested yet.
 
 ## Flashing
 
@@ -99,6 +70,6 @@ Two independent polarity unknowns here, each with a one-line fix — don't chase
 - **Pedal polarity** (sustain reads "on" at idle, "off" when pressed): flip `kInvert` to `true` in the sketch and re-upload.
 - **TRS MIDI type** (FM-1 doesn't respond at all): this board is wired Type A (tip = signal, ring = +5V, sleeve = GND). If the FM-1 turns out to expect Type B, swap tip and ring at the jack (or re-wire): tip = GND, ring = signal, sleeve = GND.
 
-## Setup on the FM-1
+## History
 
-Match `kChannel` in the sketch to the FM-1's configured Note Channel (`GLO` mode, page 1, Knob 1) — same channel used and confirmed working for CC64 in [fm1-sustain-test](https://github.com/pfkellogg/fm1-sustain-test), a USB MIDI script that confirmed the FM-1 responds to CC64 sustain before this board was built.
+An OLED display, a mode switch (to flip the OLED between sustain status and a live pitch readout), and an audio-input pitch detector (reading the FM-1's own headphone output) all previously lived on this board. All three were removed 2026-08-09 — the OLED moved permanently to a separate project, [fm1-midi-voice-tuner](https://github.com/pfkellogg/fm1-midi-voice-tuner), which reads the FM-1's MIDI output instead of its audio output. See git history on this repo if the mode switch or audio pitch detector are ever needed again.
