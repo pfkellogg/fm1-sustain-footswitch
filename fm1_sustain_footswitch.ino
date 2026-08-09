@@ -2,9 +2,7 @@
 // wired in parallel) and sends MIDI CC64 (sustain) out the Arduino's
 // hardware Serial MIDI circuit, straight to a second 3.5mm TRS jack wired
 // Type A, into the FM-1's MIDI IN. Also drives a linear softpot pitch strip
-// (see below) -- a joystick was tried first but its coupled X/Y axes made
-// clean pitch-only motion impractical, so it was replaced with a strip,
-// closer to how the Arturia MiniLab 3's own pitch strip works.
+// (see below), closer to how the Arturia MiniLab 3's own pitch strip works.
 //
 // Wiring:
 //   Pedal jack tip           -> D2
@@ -40,9 +38,9 @@
 // TX line while uploading, or the upload will fail.
 //
 // The OLED display, mode switch, and audio-input pitch detector that used
-// to live on this board have been removed for now (they were only useful
-// together, and the OLED is coming back later) -- see git history if they
-// need to be resurrected.
+// to live on this board have been removed. The OLED moved permanently to a
+// separate project, fm1-midi-voice-tuner -- see git history on this repo
+// if the mode switch or pitch detector need to be resurrected.
 
 constexpr uint8_t kPedalPin = 2;
 constexpr uint8_t kChannel  = 0;      // 0 = MIDI channel 1; match FM-1's Note Channel

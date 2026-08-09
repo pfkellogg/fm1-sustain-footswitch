@@ -60,6 +60,24 @@ def resistor_h(ax, x1, y, length, label):
     return (x1 + length, y)
 
 
+def resistor_v(ax, x, y1, length, label):
+    zz_len = length * 0.55
+    lead = (length - zz_len) / 2
+    y_start_zz = y1 - lead
+    n = 6
+    ys = [y_start_zz - i * (zz_len / n) for i in range(n + 1)]
+    amp = 0.26
+    xs = [x + (amp if i % 2 == 1 else -amp) for i in range(n + 1)]
+    xs[0] = x
+    xs[-1] = x
+    line(ax, x, y1, x, y_start_zz)
+    for i in range(n):
+        line(ax, xs[i], ys[i], xs[i + 1], ys[i + 1])
+    line(ax, x, y_start_zz - zz_len, x, y1 - length)
+    ax.text(x + 0.5, y1 - length / 2, label, ha='left', va='center', fontsize=FS_PIN)
+    return (x, y1 - length)
+
+
 def ground_symbol(ax, x, y):
     line(ax, x, y, x, y - 0.35)
     widths = [0.5, 0.32, 0.14]
@@ -88,7 +106,7 @@ ax1.set_aspect('equal')
 ax1.axis('off')
 
 ax1.text(0, 13.15, 'FM-1 Sustain Footswitch — Schematic', fontsize=FS_TITLE, fontweight='bold', va='top')
-ax1.text(0, 12.45, 'Arduino Uno R3  +  TRS Pedal In  +  Built-in Button  +  TRS MIDI Out (Type A)  +  Joystick Pitch-Bend', fontsize=FS_SUB, va='top', style='italic')
+ax1.text(0, 12.45, 'Arduino Uno R3  +  TRS Pedal In  +  Built-in Button  +  TRS MIDI Out (Type A)  +  Softpot Pitch Strip', fontsize=FS_SUB, va='top', style='italic')
 
 GND_Y = 1.0
 line(ax1, 0.5, GND_Y, 26.0, GND_Y, lw=1.8)
@@ -116,9 +134,7 @@ au_tx = pin_right(ax1, AU_X + AU_W, 9.7, 1.1, 'TX (D1)')
 au_5v = pin_right(ax1, AU_X + AU_W, 8.0, 1.1, '5V')
 au_gnd_r = pin_right(ax1, AU_X + AU_W, 6.3, 1.1, 'GND')
 au_a1 = pin_right(ax1, AU_X + AU_W, 5.0, 1.1, 'A1')
-au_d4 = pin_right(ax1, AU_X + AU_W, 4.3, 1.1, 'D4')
-au_a2 = pin_right(ax1, AU_X + AU_W, 3.6, 1.1, 'A2')
-ax1.text(AU_X + AU_W / 2, AU_Y - 0.35, 'INPUT_PULLUP on D2 and D4', ha='center', fontsize=FS_SMALL, style='italic', color='dimgray')
+ax1.text(AU_X + AU_W / 2, AU_Y - 0.35, 'INPUT_PULLUP on D2', ha='center', fontsize=FS_SMALL, style='italic', color='dimgray')
 
 # Pedal Tip -> Arduino D2 (straight wire, same y)
 line(ax1, pj_t[0], pj_t[1], au_d2[0], au_d2[1])
@@ -163,24 +179,29 @@ line(ax1, au_gnd_r[0], au_gnd_r[1], mj_s[0], mj_s[1])
 dot(ax1, au_gnd_r[0], au_gnd_r[1])
 line(ax1, au_gnd_r[0], au_gnd_r[1], au_gnd_r[0], GND_Y)
 
-# --- Joystick (2-axis analog + button) -- sits to the right of MIDI OUT, at
-# a lower y-band (A1/D4/A2 pins are all below y=5.5, MIDI OUT's bottom edge)
-# so the connecting wires pass underneath it with no crossing at all.
-JOY_X, JOY_Y, JOY_W, JOY_H = 21.5, 2.8, 2.8, 2.6
-box(ax1, JOY_X, JOY_Y, JOY_W, JOY_H, 'Joystick', 'Analog X/Y + SW')
-joy_vrx = pin_left(ax1, JOY_X, 5.0, 0.9, 'VRx')
-joy_sw = pin_left(ax1, JOY_X, 4.3, 0.9, 'SW')
-joy_vry = pin_left(ax1, JOY_X, 3.6, 0.9, 'VRy')
+# --- Pitch Strip (linear softpot) -- sits to the right of MIDI OUT, at a
+# lower y-band (A1 pin is below y=5.5, MIDI OUT's bottom edge) so the
+# connecting wire passes underneath it with no crossing at all.
+STRIP_X, STRIP_Y, STRIP_W, STRIP_H = 21.5, 2.8, 2.8, 2.6
+box(ax1, STRIP_X, STRIP_Y, STRIP_W, STRIP_H, 'Pitch Strip', 'SoftPot 100mm (linear)')
+strip_wiper = pin_left(ax1, STRIP_X, 4.3, 0.9, 'Wiper')
 
-line(ax1, au_a1[0], au_a1[1], joy_vrx[0], joy_vrx[1])
-line(ax1, au_d4[0], au_d4[1], joy_sw[0], joy_sw[1])
-line(ax1, au_a2[0], au_a2[1], joy_vry[0], joy_vry[1])
+line(ax1, au_a1[0], au_a1[1], strip_wiper[0], strip_wiper[1])
+dot(ax1, au_a1[0], au_a1[1])
 
-# VCC as a local 5V rail flag, GND dropped to the shared bus
-power_flag(ax1, JOY_X + 0.5, JOY_Y, '5V', up=False)
-line(ax1, JOY_X + JOY_W - 0.5, JOY_Y, JOY_X + JOY_W - 0.5, GND_Y)
-dot(ax1, JOY_X + JOY_W - 0.5, GND_Y)
-ax1.text(JOY_X + JOY_W - 0.5, JOY_Y - 0.75, 'GND', ha='center', va='top', fontsize=FS_PIN)
+# R3: 10k pull-down from the A1/Wiper net to GND, so the reading is a
+# stable near-0 baseline when the strip isn't being touched
+r3_end = resistor_v(ax1, au_a1[0], au_a1[1] - 0.3, 1.6, 'R3\n10kΩ')
+line(ax1, r3_end[0], r3_end[1], r3_end[0], GND_Y)
+dot(ax1, r3_end[0], GND_Y)
+
+# End 1 -> 5V (local rail flag), End 2 -> GND (dropped to the shared bus).
+# Which end is which isn't critical (a symmetric softpot), so just the net
+# name is labeled here -- the End1/End2 mapping is spelled out in the notes.
+power_flag(ax1, STRIP_X + 0.5, STRIP_Y, '5V', up=False)
+line(ax1, STRIP_X + STRIP_W - 0.5, STRIP_Y, STRIP_X + STRIP_W - 0.5, GND_Y)
+dot(ax1, STRIP_X + STRIP_W - 0.5, GND_Y)
+ax1.text(STRIP_X + STRIP_W - 0.5, STRIP_Y - 0.62, 'GND', ha='center', va='top', fontsize=FS_PIN)
 
 notes1 = (
     "Notes:\n"
@@ -191,10 +212,11 @@ notes1 = (
     "• R1 limits current through the FM-1's opto-isolated MIDI input; R2 sources the +5V loop current -- both 220Ω, matching the standard DIN MIDI-out circuit\n"
     "• TX (D1) is shared with the USB-serial programmer -- disconnect the MIDI OUT jack (or at least the R1 lead) before uploading a new sketch\n"
     "• If the FM-1 doesn't respond, it may expect Type B instead: swap Tip and Ring at the MIDI OUT jack (tip = GND, ring = signal, sleeve = GND)\n"
-    "• Joystick VRx (A1) drives pitch bend, VRy (A2) selects octave (down/center/up), SW (D4, INPUT_PULLUP) holds to sound a note and glide it -- release to stop\n"
-    "• The FM-1 ignores pitch bend sent to an already-sounding note, but applies it if sent right before Note On -- so the sketch rapidly retriggers\n"
-    "  the note (~15ms) with a fresh bend value each time to fake a smooth glide\n"
-    "• OLED display, mode switch, and audio-input pitch detector removed for now -- coming back later"
+    "• Pitch Strip: End 1 -> 5V, End 2 -> GND, Wiper -> A1 through R3 (10kΩ pull-down) -- base note sounds continuously from power-on, sliding\n"
+    "  the strip bends pitch, releasing settles back to center (no bend); no button needed\n"
+    "• Over the FM-1's physical MIDI IN (not USB), continuous Pitch Bend applied to an already-sounding note works and sounds smooth -- confirmed\n"
+    "  2026-08-06, no retrigger-glide workaround needed on this path (that was only required for the FM-1's USB MIDI input)\n"
+    "• OLED display, mode switch, and audio-input pitch detector removed -- the OLED moved permanently to a separate project, fm1-midi-voice-tuner"
 )
 line(ax1, 0.5, GND_Y - 0.8, 26.0, GND_Y - 0.8, lw=0.8)
 ax1.lines[-1].set_linestyle('dashed')
@@ -213,9 +235,9 @@ ax2.set_aspect('equal')
 ax2.axis('off')
 
 ax2.text(0, 12.7, 'FM-1 Sustain Footswitch — Layout / Assembly Diagram', fontsize=FS_TITLE - 3, fontweight='bold', va='top')
-ax2.text(0, 12.05, 'Top-down view of enclosure: pedal jack + built-in button (left panel), Arduino Uno (center), MIDI out jack (right panel), joystick (front panel)', fontsize=FS_SUB - 1, va='top', style='italic')
+ax2.text(0, 12.05, 'Top-down view of enclosure: pedal jack + built-in button (left panel), Arduino Uno (center), MIDI out jack (right panel), pitch strip (front panel)', fontsize=FS_SUB - 1, va='top', style='italic')
 
-# Enclosure outline -- tall enough that the joystick box (mounted front
+# Enclosure outline -- tall enough that the pitch strip box (mounted front
 # panel, drawn above the Uno) actually sits inside it, not poking through
 ENC_X, ENC_Y, ENC_W, ENC_H = 0.5, 1.0, 18.0, 9.6
 ax2.add_patch(patches.FancyBboxPatch((ENC_X, ENC_Y), ENC_W, ENC_H,
@@ -236,14 +258,14 @@ uno_gnd_l = (UNO_X, UNO_Y + 2.3)
 uno_tx = (UNO_X + UNO_W, UNO_Y + 3.1)
 uno_5v = (UNO_X + UNO_W, UNO_Y + 2.3)
 uno_gnd_r = (UNO_X + UNO_W, UNO_Y + 1.5)
-uno_joy = (UNO_X + UNO_W, UNO_Y + 0.7)  # A1/D4/A2 bundle, see schematic for the 3 individual pins
+uno_strip = (UNO_X + UNO_W, UNO_Y + 0.7)  # A1, see schematic for the pull-down resistor
 for (px, py), name, ha, dx in [
     (uno_d2, 'D2', 'right', -0.15),
     (uno_gnd_l, 'GND', 'right', -0.15),
     (uno_tx, 'TX', 'left', 0.15),
     (uno_5v, '5V', 'left', 0.15),
     (uno_gnd_r, 'GND', 'left', 0.15),
-    (uno_joy, 'A1/D4/A2', 'left', 0.15),
+    (uno_strip, 'A1', 'left', 0.15),
 ]:
     dot(ax2, px, py, r=0.07)
     ax2.text(px + dx, py, name, ha=ha, va='center', fontsize=FS_PIN)
@@ -294,17 +316,17 @@ line(ax2, uno_gnd_r[0], uno_gnd_r[1], MJACK[0] - 0.35, MJACK[1] - 0.15)
 line(ax2, PERF_X + PERF_W, PERF_Y + PERF_H - 0.3, MJACK[0] - 0.35, MJACK[1] + 0.15)
 line(ax2, PERF_X + PERF_W, PERF_Y + PERF_H - 0.9, MJACK[0] - 0.35, MJACK[1])
 
-# Joystick, mounted front panel -- placed above the MIDI OUT jack, clear of
-# everything else
-JOY2_W, JOY2_H = 2.6, 1.8
-JOY2_XY = (MJACK[0] - JOY2_W / 2, UNO_Y + UNO_H + 1.1)
-ax2.add_patch(patches.Rectangle(JOY2_XY, JOY2_W, JOY2_H, fill=True, facecolor='#fde68a', edgecolor='black', lw=1.6))
-ax2.text(JOY2_XY[0] + JOY2_W / 2, JOY2_XY[1] + JOY2_H + 0.25, 'Joystick', ha='center', va='bottom', fontsize=FS_LABEL, fontweight='bold')
-ax2.text(JOY2_XY[0] + JOY2_W / 2, JOY2_XY[1] + JOY2_H / 2, 'Analog\nX/Y + SW', ha='center', va='center', fontsize=FS_SMALL)
-ax2.text(JOY2_XY[0] + JOY2_W + 0.3, JOY2_XY[1] + JOY2_H / 2, '(front panel;\nVRx->A1, VRy->A2,\nSW->D4, +VCC/GND)', ha='left', va='center', fontsize=FS_SMALL, style='italic', color='dimgray')
-line(ax2, uno_joy[0], uno_joy[1], JOY2_XY[0] - 0.6, uno_joy[1])
-line(ax2, JOY2_XY[0] - 0.6, uno_joy[1], JOY2_XY[0] - 0.6, JOY2_XY[1] + JOY2_H / 2)
-line(ax2, JOY2_XY[0] - 0.6, JOY2_XY[1] + JOY2_H / 2, JOY2_XY[0], JOY2_XY[1] + JOY2_H / 2)
+# Pitch Strip, mounted front panel -- placed above the MIDI OUT jack, clear
+# of everything else
+STRIP2_W, STRIP2_H = 2.6, 1.8
+STRIP2_XY = (MJACK[0] - STRIP2_W / 2, UNO_Y + UNO_H + 1.1)
+ax2.add_patch(patches.Rectangle(STRIP2_XY, STRIP2_W, STRIP2_H, fill=True, facecolor='#fde68a', edgecolor='black', lw=1.6))
+ax2.text(STRIP2_XY[0] + STRIP2_W / 2, STRIP2_XY[1] + STRIP2_H + 0.25, 'Pitch Strip', ha='center', va='bottom', fontsize=FS_LABEL, fontweight='bold')
+ax2.text(STRIP2_XY[0] + STRIP2_W / 2, STRIP2_XY[1] + STRIP2_H / 2, 'SoftPot\n100mm', ha='center', va='center', fontsize=FS_SMALL)
+ax2.text(STRIP2_XY[0] + STRIP2_W + 0.3, STRIP2_XY[1] + STRIP2_H / 2, '(front panel;\nEnd1->5V, End2->GND,\nWiper->A1 + 10k pull-down)', ha='left', va='center', fontsize=FS_SMALL, style='italic', color='dimgray')
+line(ax2, uno_strip[0], uno_strip[1], STRIP2_XY[0] - 0.6, uno_strip[1])
+line(ax2, STRIP2_XY[0] - 0.6, uno_strip[1], STRIP2_XY[0] - 0.6, STRIP2_XY[1] + STRIP2_H / 2)
+line(ax2, STRIP2_XY[0] - 0.6, STRIP2_XY[1] + STRIP2_H / 2, STRIP2_XY[0], STRIP2_XY[1] + STRIP2_H / 2)
 
 notes2 = (
     "Notes:\n"
@@ -312,8 +334,8 @@ notes2 = (
     "• See the schematic for the electrical connections (which wire goes through which resistor) -- this diagram is for physical placement only\n"
     "• Button and Pedal IN jack are wired in parallel to the same D2/GND nodes -- either one alone triggers sustain, so the pedal can be left unplugged\n"
     "• Leave slack on the USB cable path -- the board still needs to be reachable for re-flashing (disconnect MIDI OUT jack's TX lead first)\n"
-    "• Joystick needs 5 wires to the Uno (VCC, GND, VRx->A1, VRy->A2, SW->D4) in addition to the single bundled point shown here for clarity\n"
-    "• OLED display, mode switch, and audio-input pitch detector removed for now -- coming back later"
+    "• Pitch Strip needs 3 wires to the Uno area (End1->5V, End2->GND, Wiper->A1) plus R3 (10k pull-down, A1->GND) -- shown bundled here for clarity\n"
+    "• OLED display, mode switch, and audio-input pitch detector removed -- the OLED moved permanently to a separate project, fm1-midi-voice-tuner"
 )
 ax2.text(0, ENC_Y - 0.5, notes2, fontsize=FS_NOTES - 1, va='top', ha='left', family='sans-serif', linespacing=1.6)
 
